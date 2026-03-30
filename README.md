@@ -1,66 +1,151 @@
-# 🐝 BeeHale – Smart Beehive Monitoring System
+🐝 BeeHale – Edge ML-based Beehive Health Monitoring System
+📌 Silicon Labs Project
 
-A modern, animated React frontend for an Edge AI–based IoT beehive health monitoring system.
+BeeHale is an Edge AI-powered beehive monitoring system that enables real-time, non-invasive analysis of hive health using acoustic signals, environmental sensing, and a modern interactive dashboard.
 
-## Quick Start
+🚀 Overview
 
-### 1. Install Node.js
-Download from https://nodejs.org (LTS version recommended)
+Beekeeping plays a crucial role in agriculture, but traditional hive monitoring relies on manual inspection, which is time-consuming, disruptive, and inefficient.
 
-### 2. Install dependencies
-```bash
+BeeHale solves this by:
+
+Monitoring hive conditions using sound + sensors
+Performing on-device (edge) inference
+Providing real-time insights without internet
+Visualizing data through an interactive dashboard
+
+🎯 Key Features:
+
+🔊 Acoustic-based hive monitoring
+⚡ Real-time edge inference (no cloud required)
+🔋 Low power consumption
+🌐 Works offline (edge deployment)
+☀️ Solar panel for self-generation
+🌡️ Temperature & humidity monitoring (Si7021)
+🌫️ Gas detection (MQ-2)
+📊 Live data visualization via dashboard
+🚨 Smart alert system
+
+🧠 How It Works:
+
+Microphone captures beehive audio
+Audio is converted into 1-second segments
+
+Features extracted:
+
+RMS Energy
+Zero Crossing Rate (ZCR)
+MFCC
+Machine Learning model processes data
+
+Output classification:
+C1: Low activity
+C2: Normal activity
+C3: High / stressed activity
+
+Results are displayed on VCOM console + Dashboard UI
+
+🏗️ Hardware Components:
+
+SiWx917 (Silicon Labs) – Edge processing unit
+Microphone – Audio input
+Si7021 Sensor – Temperature & humidity
+MQ-2 Sensor – Gas detection
+Power supply / battery
+
+💻 Software Stack:
+
+🔹 Edge AI System
+Python (Model training & preprocessing)
+TensorFlow Lite Micro (Edge inference)
+Simplicity Studio (Firmware development)
+Embedded C / C++
+
+🌐 Dashboard (Frontend)
+React 18 + Vite
+TailwindCSS
+Framer Motion
+Recharts
+
+📊 Performance:
+
+✅ Accuracy: ~85–90%
+⚡ Inference latency: ~20–50 ms
+🔋 Optimized for low memory (INT8 model)
+🌐 Dashboard (Frontend UI)
+
+A modern, animated React-based dashboard to visualize hive data and system outputs.
+
+▶️ Run Dashboard Locally
+1️⃣ Install Node.js
+Download from: https://nodejs.org
+2️⃣ Install dependencies
 npm install
-```
-
-### 3. Run development server
-```bash
+3️⃣ Run development server
 npm run dev
-```
 
-Open http://localhost:5173 in your browser.
+Open 👉 http://localhost:5173
 
-## Project Structure
-
-```
+📁 Project Structure
 src/
 ├── components/
-│   ├── Navbar.jsx          # Sticky navbar with active section tracking
-│   ├── Hero.jsx            # Landing page with honey drip + CTA buttons
-│   ├── Features.jsx        # Animated feature cards (6 system capabilities)
-│   ├── Dashboard.jsx       # Live sensor gauges + AI confidence + status
-│   ├── Analytics.jsx       # Historical charts (temp, humidity, weight, audio)
-│   ├── Alerts.jsx          # Alert cards with glow animations
-│   ├── About.jsx           # Problem/solution + colony collapse stats
-│   ├── Architecture.jsx    # System flow diagram + tech stack
-│   ├── FlyingBees.jsx      # Animated bees flying across screen
-│   └── Footer.jsx          # Footer with links
+│   ├── Navbar.jsx
+│   ├── Hero.jsx
+│   ├── Features.jsx
+│   ├── Dashboard.jsx
+│   ├── Analytics.jsx
+│   ├── Alerts.jsx
+│   ├── About.jsx
+│   ├── Architecture.jsx
+│   ├── FlyingBees.jsx
+│   └── Footer.jsx
 ├── hooks/
-│   └── useHiveData.js      # API hooks (simulated): useHiveData, useHistoricalData
+│   └── useHiveData.js
 ├── data/
-│   └── mockData.js         # Mock sensor data + feature/alert definitions
-├── App.jsx                 # Root: loading screen, bee cursor, section tracking
-└── index.css               # Global styles, glassmorphism, honeycomb bg
-```
+│   └── mockData.js
+├── App.jsx
+└── index.css
+🔗 API Integration
 
-## API Integration
+Replace mock data in:
 
-Replace mock data in `src/hooks/useHiveData.js` with real fetch calls:
+src/hooks/useHiveData.js
 
-```js
-// Example: replace generateSensorData() with:
+Example:
+
 const res = await fetch('/api/sensor-data')
 const data = await res.json()
-```
+Expected Endpoints:
+/api/hive-status
+/api/sensor-data
+/api/audio-analysis
+/api/hive-weight
+/api/alerts
 
-Endpoints expected:
-- `GET /api/hive-status`
-- `GET /api/sensor-data`
-- `GET /api/audio-analysis`
-- `GET /api/hive-weight`
-- `GET /api/alerts`
+📷 Demo:
 
-## Tech Stack
-- React 18 + Vite 5
-- TailwindCSS 3
-- Framer Motion 11
-- Recharts 2
+Live classification output (QB present/absent)
+Sensor readings via VCOM console
+Dashboard visualization of hive data
+
+💡 Use Case:
+
+Real-time beehive monitoring
+Early detection of hive stress
+Reduced manual inspection
+Improved honey production
+Smart agriculture solution
+
+🏆 Achievement:
+
+🏅 Received ₹10,000 prototype funding from Silicon Labs
+
+📌 Future Scope:
+
+Wi-Fi connectivity & cloud integration
+Mobile app for alerts
+Advanced analytics & prediction
+Multi-hive monitoring system
+Solar-powered deployment ☀️
+
+⭐ Support:- If you like this project, consider giving it a ⭐ on GitHub!
