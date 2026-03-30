@@ -21,6 +21,7 @@ Providing real-time insights without internet
 🔊 Acoustic-based hive monitoring
 ⚡ Real-time edge inference (no cloud required)
 🔋 Low power consumption
+☀️ Solar panel for self power generation
 🌐 Works offline (edge deployment)
 🌡️ Temperature & humidity monitoring (Si7021)
 🌫️ Gas detection (MQ-2)
