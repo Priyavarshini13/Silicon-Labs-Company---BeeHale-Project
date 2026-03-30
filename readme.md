@@ -1,8 +1,8 @@
-# SL I2C DRIVER FOLLOWER BLOCKING
+# SL ADC Static Mode
 
 ## Table of Contents
 
-- [SL I2C DRIVER FOLLOWER BLOCKING](#sl-i2c-driver-follower-blocking)
+- [SL ADC Static Mode](#sl-adc-static-mode)
   - [Table of Contents](#table-of-contents)
   - [Purpose/Scope](#purposescope)
   - [Overview](#overview)
@@ -15,74 +15,61 @@
   - [Application Build Environment](#application-build-environment)
     - [Application Configuration Parameters](#application-configuration-parameters)
     - [Pin Configuration](#pin-configuration)
+      - [Pin Configuration of the WPK \[BRD4002A\] Base Board, and with radio board](#pin-configuration-of-the-wpk-brd4002a-base-board-and-with-radio-board)
+      - [Pin Configuration of the AC1 Module Explorer Kit](#pin-configuration-of-the-ac1-module-explorer-kit)
   - [Test the Application](#test-the-application)
 
 ## Purpose/Scope
 
-The application demonstrates the data transfer from leader to follower and then follower to leader. After transmission the data is compared and result is printed on the console.
+This application demonstrates the ADC peripheral, including:
 
-> **Note:** The master-slave terminology is now replaced with leader-follower. Master is now recognized as Leader and slave is now recognized as Follower.
+- Converting analog input to 12-bit digital output.
+- Sampling the data.
+- Converting data into equivalent input voltage based on operation mode.
 
 ## Overview
 
-- The I2C will be configured in Follower mode. The SCL and SDA lines of leader controller are connected to Follower's SCL and SDA pins.
-- Here the SCL and SDA lines of Follower are configured as internal pull-up.
-- There are three configurable I2C controllers in M4 - two in the MCU HP peripherals (I2C1, I2C2) and one in the MCU ULP subsystem (ULP_I2C). For an  I2C Follower, all instances will in MCU HP mode.
-- The I2C interface allows the processor to serve as a Leader or Follower on the I2C bus.
-- I2C can be configured with following features:
-  - I2C standard compliant bus interface with open-drain pins
-  - Configurable as Leader or Follower
-  - Four speed modes: Standard Mode (100 kbps), Fast Mode (400 kbps), Fast Mode Plus (1Mbps) and High-Speed Mode (3.4 Mbps)
-  - 7- or 10-bit addressing and combined format transfers
-  - Support for Clock synchronization and Bus Clear
+- The ADC Controller works on a ADC with a resolution of 12-bits at 10Msps when ADC reference Voltage is greater than 2.8v or 5Msps when ADC reference Voltage is less than 2.8v.
+- Sample application will be 12-bit ADC Output in 2's complement representation.
+- There are two operating modes in the AUX ADC controller:
+  - Static Mode Operation: ADC data input will be sampled and written to a register in this mode.
+  - FIFO Mode Operation: ADC data input will be sampled and written to the ADC FIFO in this mode.
+- There is a dedicated ADC DMA to support 16 channels.
+- DMA mode supports dual buffer cyclic mode to avoid loss of data when buffer is full. In dual buffer cyclic mode, if buffer 1 is full for particular channel, incoming sampled data is written into buffer 2 such that, samples from buffer 1 are read back by controller during this time. That is why there are two start addresses, two buffer lengths and two valid signals for each channel.
+- The AUX ADC can take analog inputs in single ended or differential. The output is 12-bit digital which can be given out with (or) without noise averaging.
+- The Aux VRef can be connected directly to Vbat (Aux LDO bypass mode) or to the Aux LDO output.
 
 ## About Example Code
 
-- This example code demonstrates I2C data transfer between a Leader and Follower using Blocking APIs.
-- In the example code, the first I2c instance is initialized using [sl_i2c_driver_init](https://docs.silabs.com/wiseconnect/3.5.0/wiseconnect-api-reference-guide-si91x-peripherals/i2-c#sl-i2c-driver-init) to configure various init structure parameters
-- This structure includes:
-  - [sl_i2c_operating_mode_t](https://docs.silabs.com/wiseconnect/3.5.0/wiseconnect-api-reference-guide-si91x-peripherals/i2-c#sl-i2c-operating-mode-t) bus speed, it can be Standard, Fast, Fast plus or High speed.
-  - [sl_i2c_mode_t](https://docs.silabs.com/wiseconnect/3.5.0/wiseconnect-api-reference-guide-si91x-peripherals/i2-c#sl-i2c-mode-t) mode, it should be Follower mode for the Follower application.
-  - [sl_i2c_transfer_type_t](https://docs.silabs.com/wiseconnect/3.5.0/wiseconnect-api-reference-guide-si91x-peripherals/i2-c#sl-i2c-transfer-type-t), using NON-DMA.
-  - [sl_i2c_callback_t](https://docs.silabs.com/wiseconnect/3.5.0/wiseconnect-api-reference-guide-si91x-peripherals/i2-c#sl-i2c-callback-t) , I2C callback
-- It also initializes I2C clock and configures I2C SDA & SCL pins.
-- Now Follower address has to configure its own address through [sl_i2c_driver_set_follower_address](https://docs.silabs.com/wiseconnect/3.5.0/wiseconnect-api-reference-guide-si91x-peripherals/i2-c#sl-i2c-driver-set-follower-address) API.
-- Now transmit and receive FIFO threshold values are configured using [sl_i2c_driver_configure_fifo_threshold](https://docs.silabs.com/wiseconnect/3.5.0/wiseconnect-api-reference-guide-si91x-peripherals/i2-c#sl-i2c-driver-configure-fifo-threshold) API.
-- Now write_buffer is filled with some data which needs to be sent to the Leader.
-- Current_mode enum is set to I2C_RECEIVE_DATA. It receives data from the Leader through [sl_i2c_driver_receive_data_blocking](https://docs.silabs.com/wiseconnect/3.5.0/wiseconnect-api-reference-guide-si91x-peripherals/i2-c#sl-i2c-driver-receive-data-blocking) for a blocking application.
-- After that, it will wait until all the data is received by Leader.
-- For Blocking usecase: When all bytes are received then mode changes to I2C_SEND_DATA. (Blocking API will not update any transfer complete flag, as control will be blocked until all bytes are received.)
-- Then it calls the send_data API to send data to the Leader through [sl_i2c_driver_send_data_blocking](https://docs.silabs.com/wiseconnect/3.5.0/wiseconnect-api-reference-guide-si91x-peripherals/i2c#sl-i2c-driver-send-data-blocking) for a blocking application.
-- After calling send_data, it will wait till all the data is transmitted to leader device.
-- Now it compares the data which is received from the Leader device to the data which it has sent.
-- If the send and receive data is same, it will print 'Test Case Passed' on the console.
-- For Blocking usecase: When all bytes are sent then mode changes to I2C_TRANSMISSION_COMPLETED (Blocking API won't update any transfer complete flag, as control will be blocked until all bytes are sent).
-- I2C driver gets in I2C_TRANSMISSION_COMPLETED mode and stays idle.
-
-> **Note:**
->
->- I2C has three instances. Users can handle these I2C instances by adding their instances.
->- I2C0, I2C1, and I2C2 are the names pre-defined for the I2C instances
->- For user-defined instances, one may have to define his hardware specific definitions in config.h file.
->- Users can directly use APIs in the application by passing the appropriate structure members if the user does not want to configure it from the UC.
+- This example demonstrates ADC in static mode of operation. It reads the sampled data from data register of ADC and and converts it into equivalent input voltage.
+- Various parameters like Number of Channel, ADC Operation Mode, Input Type, Sampling Rate, and Sample Length can be configured using UC.
+- The [`sl_si91x_adc_common_config.h`](https://github.com/SiliconLabs/wiseconnect/blob/master/components/device/silabs/si91x/mcu/drivers/unified_api/config/sl_si91x_adc_common_config.h) file contains the common configurations for ADC and [`sl_si91x_adc_init_inst_config.h`](https://github.com/SiliconLabs/wiseconnect/blob/master/components/device/silabs/si91x/mcu/drivers/unified_api/config/sl_si91x_adc_init_inst_config.h) contains channel instance configuration.
+- This example is working on ADC static mode and it samples the data with **NON-DMA** mode.
+- The firmware version of API is fetched using [sl_si91x_adc_get_version](https://docs.silabs.com/wiseconnect/latest/wiseconnect-api-reference-guide-si91x-peripherals/adc#sl-si91x-adc-get-version) which includes the release version, major version and minor version [sl_adc_version_t](https://docs.silabs.com/wiseconnect/latest/wiseconnect-api-reference-guide-si91x-peripherals/adc#sl-adc-version-t).
+- ADC initialize should call [sl_si91x_adc_init](https://docs.silabs.com/wiseconnect/latest/wiseconnect-api-reference-guide-si91x-peripherals/adc#sl-si91x-adc-init) API and passing parameters [sl_adc_channel_config_t](https://docs.silabs.com/wiseconnect/latest/wiseconnect-api-reference-guide-si91x-peripherals/adc#sl-adc-channel-config-t), [sl_adc_config_t](https://docs.silabs.com/wiseconnect/latest/wiseconnect-api-reference-guide-si91x-peripherals/adc#sl-adc-config-t) and reference voltage value.
+- All the necessary parameters are configured using [sl_si91x_adc_set_channel_configuration](https://docs.silabs.com/wiseconnect/latest/wiseconnect-api-reference-guide-si91x-peripherals/adc#sl-si91x-adc-set-channel-configuration) API. It expects a structure with required parameters [sl_adc_channel_config_t](https://docs.silabs.com/wiseconnect/latest/wiseconnect-api-reference-guide-si91x-peripherals/adc#sl-adc-channel-config-t) and [sl_adc_config_t](https://docs.silabs.com/wiseconnect/latest/wiseconnect-api-reference-guide-si91x-peripherals/adc#sl-adc-config-t).
+- After configuration, a callback register API is called to register the callback at the time of events [sl_si91x_adc_register_event_callback](https://docs.silabs.com/wiseconnect/latest/wiseconnect-api-reference-guide-si91x-peripherals/adc#sl-si91x-adc-register-event-callback).
+- Then start the ADC to sample the data using [sl_si91x_adc_start](https://docs.silabs.com/wiseconnect/latest/wiseconnect-api-reference-guide-si91x-peripherals/adc#sl-si91x-adc-start) API.
+- Once sampling is done, the callback will hit and set the true "data_sample_complete_flag" flag to read the sampled data using [sl_si91x_adc_read_data_static](https://docs.silabs.com/wiseconnect/latest/wiseconnect-api-reference-guide-si91x-peripherals/adc#sl-si91x-adc-read-data-static) API for static mode of ADC. This process will run continuously.
+- If the ADC is started, it is recommended to stop it before de-initializing. This is general flow of API calls for ADC: [sl_si91x_adc_init](https://docs.silabs.com/wiseconnect/3.5.0/wiseconnect-api-reference-guide-si91x-peripherals/adc#sl-si91x-adc-init) -> [sl_si91x_adc_start](https://docs.silabs.com/wiseconnect/3.5.0/wiseconnect-api-reference-guide-si91x-peripherals/adc#sl-si91x-adc-start) -> [sl_si91x_adc_stop](https://docs.silabs.com/wiseconnect/3.5.0/wiseconnect-api-reference-guide-si91x-peripherals/adc#sl-si91x-adc-stop) -> [sl_si91x_adc_deinit](https://docs.silabs.com/wiseconnect/3.5.0/wiseconnect-api-reference-guide-si91x-peripherals/adc#sl-si91x-adc-deinit).
 
 ## Prerequisites/Setup Requirements
 
 ### Hardware Requirements
 
 - Windows PC
-- Silicon Labs Si917 Evaluation Kit [WPK(BRD4002) +  BRD4338A / BRD4342A / BRD4343A] - as a Follower and Leader
-- SiWx917 AC1 Module Explorer Kit (BRD2708A) as a Follower and Leader
+- Silicon Labs Si917 Evaluation Kit [WPK(BRD4002)+ BRD4338A / BRD4342A / BRD4343A ]
+- SiWx917 AC1 Module Explorer Kit (BRD2708A)
 
 ### Software Requirements
 
 - Simplicity Studio
 - Serial console setup
-  - For serial console setup instructions, refer [here](https://docs.silabs.com/wiseconnect/latest/wiseconnect-developers-guide-developing-for-silabs-hosts/#console-input-and-output).
+  - For serial console setup instructions, refer [here](https://docs.silabs.com/wiseconnect/latest/wiseconnect-developers-guide-developing-for-silabs-hosts/#console-input-and-output)..
 
 ### Setup Diagram
 
-![Figure: setupdiagram](resources/readme/setupdiagram.png)
+> ![Figure: setupdiagram](resources/readme/setupdiagram.png)
 
 ## Getting Started
 
@@ -100,62 +87,81 @@ For details on the project folder structure, see the [WiSeConnect Examples](http
 
 ### Application Configuration Parameters
 
-- Open the **sl_si91x_i2c_driver_follower.slcp** project file, select the **Software cComponent** tab, and search for **i2c** in the search bar.
-- Click on **I2C2** and configure the ULP_I2C instance as per configuration parameters given in wizard.
-- For using any other I2C instance, you must add that I2C instance by clicking on **I2C Instance** from configuration wizard and then clicking on **Add New Instance**
-- For creating I2C instances, write 'I2C0', 'I2C1' or 'I2C2' on the wizard for the respective instance and then click on **Done**
-- After creation of the instances, separate configuration files are get generated in **config folder**.
-- If the project built is without selecting configurations, it uses default values from UC.
-- Configure mode, operating-mode, and transfer-type of I2C instance using the respective instance UC.
-- Change 'Operating Mode' as per bus-speed requirement.
-- After the above UC configurations, also configure following macros in [`i2c_follower_example.c`](https://github.com/SiliconLabs/wiseconnect/blob/master/examples/si91x_soc/peripheral/sl_si91x_i2c_driver_follower/i2c_follower_example.c) file and update/modify following macros, if required.
+- Configure UC from the slcp component.
+- Open **sl_si91x_adc_static_mode.slcp** project file, select **Software Component** tab, and search for **ADC** in search bar.
+- You can use the configuration wizard to configure different parameters. The configuration screen is below, with options for the user to pick based on need.
 
-  ```C
-    #define I2C_INSTANCE_USED        // Update it with i2c instance number used for this application: 0 for i2c0, 1 for i2c1 and 2 for i2c2
-    #define OWN_I2C_ADDR             // Update I2C own address
-    #define I2C_SIZE_BUFFERS         // To change the number of bytes to send and receive.Its value should be less than maximum buffer size macro value.
-  ```
+  - **ADC Peripheral Common Configuration**
 
-> **Notes**
->
-> - After completing the above configurations, connect the SCL and SDA pins of the Leader and Follower, run the application, and observe the results by connecting SDA and SCL pins to logic analyzer. (If required, enable the glitch filter for SCL channel with time period 100ns to avoid glitches.)
-> - In Follower mode, the receive API will return a timeout error if no data is received from the Leader within 2 seconds.
-> - For I2C1 High Speed mode, pin set `GPIO50 and GPIO51` is not working as expected.
+    - Number of channel: By default channel is set to '1'. When the channel number is changed, then care must be taken to create instance of that respective channel number. Otherwise, an error is thrown.
+    - ADC operation mode: There are 2 modes, FIFO mode and Static mode. By default it is in FIFO mode. When static mode is set, sample length should be '1'.
 
-- Configure the UC as mentioned below.
+  - **ADC Channel Configuration**
 
-  ![Figure: i2c_uc_screen](resources/uc_screen/i2c_uc_screen.png)
+    - Input type: ADC input type can be configured to either single ended (or) differential.
+    - Sampling rate: Sample rate can be configurable to ADC channel, sample rate unit is samples/second. The configuration range from 1sps to 2.5 Msps.
+    - Sample length: Set the length of ADC samples, i.e. number of ADC samples collected for operation, it should be minimum value set to 1 and maximum of 1023.
+
+      ![Figure: sl_adc_channel_uc_screen](resources/uc_screen/sl_adc_channel_uc_screen.png)
+
+- After running the application, it will store the equivalent input voltage from ADC output samples in 'vout'.
+- ADC output will print the configured number of samples output voltage on UART console.
+- Apply the different voltages (1.8V to Vref) to ADC input and observe console outputs as per input.
+- Provided input voltage and console output data should match.
 
 ### Pin Configuration
 
-**I2C0:**
+#### Pin Configuration of the WPK [BRD4002A] Base Board, and with radio board
 
-| PIN |   917 GPIO     |        915 GPIO        |  Explorer kit GPIO  |   Description             |
-| --- | -------------- | ---------------------- | ------------------- | --------------------------|
-| SCL |  GPIO_7 [P20]  | GPIO_7 [EXP_HEADER-15] |     GPIO_7 [SCL]    | Connect to Leader SCL pin |
-| SDA |  GPIO_6 [P19]  | GPIO_6 [EXP_HEADER-16] |     GPIO_6 [SDA]    | Connect to Leader SDA pin |
+The following table lists the mentioned pin numbers for the radio board. If you want to use a different radio board, see the board-specific user guide.
 
-**I2C1:**
+  | CHANNEL | PIN TO ADCP | PIN TO ADCN |
+  | --- | --- | --- |
+  | 1 | ULP_GPIO_1 [P16] | GPIO_28 [P31]  |
+  | 2 | GPIO_27 [P29] | GPIO_30 [P35] |
+  | 3 | ULP_GPIO_8 [P15] | GPIO_26 [P27] |
+  | 4 | GPIO_25 [P25] | ULP_GPIO_7 [EXP_HEADER-15] |
+  | 5 | ULP_GPIO_8 [P15] | ULP_GPIO_1 [P16] |
+  | 6 | ULP_GPIO_10 [P17] | ULP_GPIO_7 [EXP_HEADER-15] |
+  | 7 | GPIO_25 [P25] | GPIO_26 [P27] |
+  | 8 | GPIO_27 [P29] | GPIO_28 [P31] |
+  | 9 | GPIO_29 [P33] | GPIO_30 [P35] |
+  | 10 | GPIO_29 [P33] | GPIO_30 [P35] |
+  | 11 | ULP_GPIO_1 [P16] | GPIO_30 [P35] |
+  | 12 | ULP_GPIO_1 [P16] | GPIO_28 [P31] |
+  | 13 | ULP_GPIO_7 [EXP_HEADER-15] | GPIO_26 [P27] |
+  | 14 | GPIO_26 [P27] | ULP_GPIO_7 [EXP_HEADER-15] |
+  | 15 | GPIO_28 [P31] | GPIO_26 [P27] |
+  | 16 | GPIO_30 [P35] | ULP_GPIO_7 [EXP_HEADER-15] |
 
-| PIN |     917 GPIO   |         915 GPIO       | Explorer kit GPIO |    Description            |
-| --- | -------------- | ---------------------- | ----------------- | ------------------------- |
-| SCL |  GPIO_54 [P42] | GPIO_6 [EXP_HEADER-16] |    GPIO_6 [SDA]   | Connect to Leader SCL pin |
-| SDA |  GPIO_55 [P43] | GPIO_7 [EXP_HEADER-15] |    GPIO_7 [SCL]   | Connect to Leader SDA pin |
+  | OTHER INPUT SELECTION | VALUE TO ADCP | VALUE TO ADCN |
+  | --- | --- | --- |
+  | OPAMP1_OUT            |         20    |     10        |
+  | OPAMP2_OUT            |         21    |     11        |
+  | OPAMP3_OUT            |         22    |     12        |
+  | TEMP_SENSOR_OUT       |         23    |     --        |
+  | DAC_OUT               |         24    |     13        |
 
-**ULP_I2C:**
+#### Pin Configuration of the AC1 Module Explorer Kit
 
-| PIN |   ULP GPIO PIN             | Explorer kit GPIO  |   Description             |
-| --- | -------------------------- | ------------------ | ------------------------- |
-| SCL | ULP_GPIO_7 [EXP_HEADER-15] |   ULP_GPIO_7 [TX]  | Connect to Leader SCL pin |
-| SDA | ULP_GPIO_6 [EXP_HEADER-16] |   ULP_GPIO_6 [RX]  | Connect to Leader SDA pin |
-
-![Figure: Pin Configuration I2C](resources/readme/image506d.png)
-
-![Figure: Pin Configuration I2C](resources/readme/image506e.png)
-
-> **Note- In case of sleep-wakeup :**
->
->- As GPIO configurations will be lost after going to sleep state, the user has to initialize I2C pins and driver again after wakeup, by using [sl_i2c_driver_init](https://docs.silabs.com/wiseconnect/3.5.0/wiseconnect-api-reference-guide-si91x-peripherals/i2c#sl-i2c-driver-init) API for initializing driver and [sl_si91x_i2c_pin_init](https://docs.silabs.com/wiseconnect/3.5.0/wiseconnect-api-reference-guide-si91x-peripherals/i2c#sl-si91x-i2c-pin-init) API for initializing pins.
+ | CHANNEL | PIN TO ADCP | PIN TO ADCN |
+  | --- | --- | --- |
+  | 1 | ULP_GPIO_1 [EXP_HEADER-5] | GPIO_28 [CS]  |
+  | 2 | GPIO_27 [MOSI] | GPIO_30 [RST] |
+  | 3 | ULP_GPIO_8 [EXP_HEADER-2] | GPIO_26 [MISO] |
+  | 4 | GPIO_25 [SCK] | ULP_GPIO_7 [TX] |
+  | 5 | ULP_GPIO_8 [EXP_HEADER-2] | ULP_GPIO_1 [EXP_HEADER-5] |
+  | 6 | ULP_GPIO_5 [EXP_HEADER-9] | ULP_GPIO_7 [TX] |
+  | 7 | GPIO_25 [SCK] | GPIO_26 [MISO] |
+  | 8 | GPIO_27 [MOSI] | GPIO_28 [CS] |
+  | 9 | GPIO_29 [AN] | GPIO_30 [RST] |
+  | 10 | GPIO_29 [AN] | GPIO_30 [RST] |
+  | 11 | ULP_GPIO_1 [EXP_HEADER-5] | GPIO_30 [RST] |
+  | 12 | ULP_GPIO_1 [EXP_HEADER-5] | GPIO_28 [CS] |
+  | 13 | ULP_GPIO_7 [TX] | GPIO_26 [MISO] |
+  | 14 | GPIO_26 [MISO] | ULP_GPIO_7 [TX] |
+  | 15 | GPIO_28 [CS] | GPIO_26 [MISO] |
+  | 16 | GPIO_30 [RST] | ULP_GPIO_7 [TX] |
 
 > **Note**: For recommended settings, see the [recommendations guide](https://docs.silabs.com/wiseconnect/latest/wiseconnect-developers-guide-prog-recommended-settings/).
 
@@ -164,14 +170,39 @@ For details on the project folder structure, see the [WiSeConnect Examples](http
 Refer to the instructions [here](https://docs.silabs.com/wiseconnect/latest/wiseconnect-getting-started/) to:
 
 1. Compile and run the application.
-2. Connect SCL(ULP_GPIO_7) and SDA(ULP_GPIO_6) pins with the Leader device. If the SiWG915 board is used, connect SCL(GPIO_7) and SDA(GPIO_6) pins with the Leader device.
-3. When the application runs, it receives and send data.
-4. After the transfer is completed, it validates the data and prints "Test Case Passed" on the console.
-5. Connect snalyzer channels to the respective I2C instance SDA and SCA pins to observe the data on lines.
-6. After successful program execution, the prints in serial console looks as shown below.
+2. When the project is generated, the ADC channel by default is configured with the channel_1 instance for the Si917 board and the channel_2 instance for the Si915 board. Also note the following:
+   - For single-ended mode, the positive analog input is set to ULP_GPIO_1 for Si917 and GPIO_27 for Si915.
+   - For differential mode, the positive analog input is set to ULP_GPIO_1 and the negative input to GPIO_28. For Si915, the positive analog input is set to GPIO_27 and the negative input to GPIO_30.
+3. When the application runs, the ADC configures the settings as per the user and starts ADC conversion.
+4. After completion of the conversion of ADC input, it will print all the captured samples data in console by connecting to the serial console.
+5. After successful program execution, the prints in serial console looks as shown below when the input voltage provided is 3.25v(approx).
 
-    ![Figure: Output](resources/readme/output.png)
+    ![Figure: output](resources/readme/output.png)
 
+> **Note:**
+>
+>- The user can configure input selection GPIO in the example application if the default GPIO is work around.
+>- Make sure ADC sample length configured as '1'; otherwise, it will throw an error.
+>- ADC input selection rather than GPIO (like OP-AMP, DAC and Temperature sensor) user can create their own instances and configure them as per other input selection.
+>- The user can install up to sixteen instances of the channel, which will execute in sequential order. To configure this, follow the steps below:
+>
+>   1. Install the channel instances.
+>   2. Update the **Number of Channel** value in the **ADC Peripheral Common Configuration** section.
+
+ Use following formula to find equivalent input voltage of ADC.
+>
+> **Differential Ended Mode:**
+>
+> vout = ((((float)ADC output/(float)4096) * Vref Voltage) - (Vref Voltage/2));
+>
+> > **Note:** If the positive input to ADC is given as 2.4V and negative input is given as 1.5V, the ADC output will be a digital value which is equivalent to 0.9V.
+>
+> **Single ended Mode:**
+>
+> vout = (((float)ADC output/(float)4096) * Vref Voltage);
+>
+> > **Note:** If the positive input to ADC is given as 2.4V, ADC output will be a digital value which is equivalent to 2.4V.
+>
 > **Note:**
 >
 > - Interrupt handlers are implemented in the driver layer, and user callbacks are provided for custom code. If you want to write your own interrupt handler instead of using the default one, make the driver interrupt handler a weak handler. Then, copy the necessary code from the driver handler to your custom interrupt handler.
